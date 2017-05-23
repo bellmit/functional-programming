@@ -1,6 +1,6 @@
-package com.fp;
+package com.fp.ep4;
 
-import static com.fp.Stream.*;
+import static com.fp.ep4.Stream.*;
 
 import static org.junit.Assert.*;
 
@@ -11,6 +11,15 @@ import java.util.function.Supplier;
 
 import org.junit.Test;
 
+/**
+ *  
+ * <pre>
+ * 개미 수열을 푸는 10가지 방법 - 사서 봅시다.
+ * https://leanpub.com/programming-look-and-say
+ * </pre>
+ *
+ * @param <T> 'T' is data type
+ */
 abstract class Stream<T> {
 
     static private final Empty EMPTY = new Empty();
@@ -24,7 +33,6 @@ abstract class Stream<T> {
         return (Stream<T>) EMPTY;
     }
 
-    
     @SafeVarargs
     static public <T> Stream<T> stream( final T... ts ) {
         return stream_( 0, ts );

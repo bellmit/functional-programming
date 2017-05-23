@@ -1,9 +1,13 @@
 package com.fp.ep3;
 
+import static com.fp.ep3.Utils.*;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
@@ -11,28 +15,16 @@ import java.time.ZoneId;
 
 import org.junit.Test;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+final class Utils {
 
-@Data
-@AllArgsConstructor
-class Bbs {
-
-    private int seq;
-
-    private boolean isNew;
-
-    private Date writeDate;
-}
-
-public class BbsList {
-
-    Date newDate( int year, int month, int dayOfMonth ) {
-        return Date.from( LocalDateTime.of( year, month, dayOfMonth, 1, 1 ).atZone( ZoneId.systemDefault() )
-                                       .toInstant() );
+    public static Date currentWeek( int day ) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime( Date.from( LocalDateTime.now().atZone( ZoneId.systemDefault() ).toInstant() ) );
+        cal.add( Calendar.DATE, ( day * -1 ) );
+        return cal.getTime();
     }
 
-    Comparator<Bbs> bbsComparator() {
+    public static Comparator<Bbs> bbsComparator() {
         return new Comparator<Bbs>() {
 
             @Override
@@ -45,13 +37,89 @@ public class BbsList {
         };
     }
 
+    public static boolean isWithinOneWeek( Date date ) {
+        Calendar weekAgo = Calendar.getInstance();
+        weekAgo.add( Calendar.DATE, -7 );
+        Calendar dcal = Calendar.getInstance();
+        dcal.setTime( date );
+        return weekAgo.before( dcal );
+    }
+}
+
+class Bbs {
+
+    public Bbs( int i, boolean b, Date newDate ) {
+        this.seq = i;
+        this.isNew = b;
+        this.writeDate = newDate;
+    }
+
+    private int seq;
+
+    private boolean isNew;
+
+    private Date writeDate;
+
+    public int getSeq() {
+        return seq;
+    }
+
+    public boolean isNew() {
+        return isNew;
+    }
+
+    public void setNew( boolean isNew ) {
+        this.isNew = isNew;
+    }
+
+    public Date getWriteDate() {
+        return writeDate;
+    }
+
+    public Bbs makeNewFlag( boolean isNew ) {
+        if ( isNew ) {
+            this.isNew = true;
+        }
+        return this;
+    }
+
+    public Bbs isNewPredicate( Predicate<Bbs> pre ) {
+        if ( pre.test( this ) ) {
+            this.isNew = true;
+        }
+        return this;
+    }
+
+    public Bbs setFieldIfTrue( Predicate<Bbs> pre, Consumer<Bbs> setter ) {
+        if ( pre.test( this ) ) {
+            setter.accept( this );
+        }
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return "Bbs [seq=" + seq + ", isNew=" + isNew + ", writeDate=" + writeDate + "]";
+    }
+}
+
+public class BbsList {
+
     @Test
-    public void testFP0001()
+    public void testWeek()
         throws Exception {
-        List<Bbs> sources = Arrays.asList( new Bbs( 1, false, newDate( 2017, 5, 9 ) ),
-                                           new Bbs( 2, false, newDate( 2017, 5, 12 ) ),
-                                           new Bbs( 3, false, newDate( 2017, 5, 10 ) ),
-                                           new Bbs( 4, false, newDate( 2017, 5, 11 ) ) );
+        System.out.println( isWithinOneWeek( currentWeek( 2 ) ) );
+    }
+
+    List<Bbs> sources() {
+        return Arrays.asList( new Bbs( 1, false, currentWeek( 0 ) ), new Bbs( 2, false, currentWeek( 12 ) ),
+                              new Bbs( 3, false, currentWeek( 2 ) ), new Bbs( 4, false, currentWeek( 11 ) ) );
+    }
+
+    @Test
+    public void testFP0001_sorting()
+        throws Exception {
+        List<Bbs> sources = sources();
         System.out.println( "\n=========================================" );
         System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
         List<Bbs> result = sources.stream().sorted( bbsComparator() ).collect( Collectors.toList() );
@@ -60,17 +128,65 @@ public class BbsList {
     }
 
     @Test
-    public void testFP0002()
+    public void testFP0002_sorting2()
         throws Exception {
-        List<Bbs> sources = Arrays.asList( new Bbs( 1, false, newDate( 2017, 5, 9 ) ),
-                                           new Bbs( 2, false, newDate( 2017, 5, 12 ) ),
-                                           new Bbs( 3, false, newDate( 2017, 5, 10 ) ),
-                                           new Bbs( 4, false, newDate( 2017, 5, 11 ) ) );
+        List<Bbs> sources = sources();
         System.out.println( "\n=========================================" );
         System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
         List<Bbs> result = sources.stream().sorted( Comparator.comparing( Bbs::getWriteDate ) )
                                   .collect( Collectors.toList() );
         System.out.println( "\n=========================================" );
         System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+    }
+
+    @Test
+    public void testFP0003_setNew_byOOP()
+        throws Exception {
+        final List<Bbs> sources = sources();
+        System.out.println( "\n=========================================" );
+        System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        List<Bbs> result = sources.stream().map( bbs -> bbs.makeNewFlag( isWithinOneWeek( bbs.getWriteDate() ) ) )
+                                  .collect( Collectors.toList() );
+        System.out.println( "\n=========================================" );
+        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+    }
+
+    @Test
+    public void testFP0004_setNew_isNewPredicate()
+        throws Exception {
+        final List<Bbs> sources = sources();
+        System.out.println( "\n=========================================" );
+        System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        List<Bbs> result = sources.stream().map( bbs -> bbs.isNewPredicate( b -> isWithinOneWeek( b.getWriteDate() ) ) )
+                                  .collect( Collectors.toList() );
+        System.out.println( "\n=========================================" );
+        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+    }
+
+    @Test
+    public void testFP0005_setNew_setFieldIfTrue()
+        throws Exception {
+        final List<Bbs> sources = sources();
+        System.out.println( "\n=========================================" );
+        System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        List<Bbs> result = sources.stream()
+                                  .map( bbs -> bbs.setFieldIfTrue( b -> isWithinOneWeek( b.getWriteDate() ),
+                                                                   b -> b.setNew( true ) ) )
+                                  .collect( Collectors.toList() );
+        System.out.println( "\n=========================================" );
+        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+    }
+
+    @Test
+    public void testFP0005_setNew_setFieldIfTrue_byConsumer()
+        throws Exception {
+        final List<Bbs> sources = sources();
+        System.out.println( "\n=========================================" );
+        System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        //        List<Bbs> result = sources.stream()
+        //                                  .map( bbs -> bbs.setFieldIfTrue( BbsList::isWithinOneWeek, b -> b.setNew( true ) ) )
+        //                                  .collect( Collectors.toList() );
+        System.out.println( "\n=========================================" );
+        //        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
     }
 }
