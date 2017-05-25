@@ -1,11 +1,18 @@
 package com.fp.ep3;
 
-import static com.fp.ep3.Utils.*;
+import static com.fp.ep3.Utils.accepting;
+import static com.fp.ep3.Utils.bbsComparator;
+import static com.fp.ep3.Utils.currentWeek;
+import static com.fp.ep3.Utils.doIfTrue;
+import static com.fp.ep3.Utils.isWithinOneWeek;
+
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -44,6 +51,26 @@ final class Utils {
         dcal.setTime( date );
         return weekAgo.before( dcal );
     }
+
+    public static boolean isWithinOneWeek( Bbs bbs ) {
+        final Date date = bbs.getWriteDate();
+        Calendar weekAgo = Calendar.getInstance();
+        weekAgo.add( Calendar.DATE, -7 );
+        Calendar dcal = Calendar.getInstance();
+        dcal.setTime( date );
+        return weekAgo.before( dcal );
+    }
+
+    public static <O, T> Consumer<O> accepting( final BiConsumer<? super O, ? super T> function, final T param ) {
+        Objects.requireNonNull( function, "The function cannot be null." );
+        return object -> function.accept( object, param );
+    }
+
+    public static <T> void doIfTrue( boolean isTrue, Runnable runnable ) {
+        if ( isTrue ) {
+            runnable.run();
+        }
+    }
 }
 
 class Bbs {
@@ -74,6 +101,10 @@ class Bbs {
 
     public Date getWriteDate() {
         return writeDate;
+    }
+
+    public void setWriteDate( Date writeDate ) {
+        this.writeDate = writeDate;
     }
 
     public Bbs makeNewFlag( boolean isNew ) {
@@ -178,15 +209,46 @@ public class BbsList {
     }
 
     @Test
-    public void testFP0005_setNew_setFieldIfTrue_byConsumer()
+    public void testFP0006_setNew_setFieldIfTrue_byConsumer()
         throws Exception {
         final List<Bbs> sources = sources();
         System.out.println( "\n=========================================" );
         System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
-        //        List<Bbs> result = sources.stream()
-        //                                  .map( bbs -> bbs.setFieldIfTrue( BbsList::isWithinOneWeek, b -> b.setNew( true ) ) )
-        //                                  .collect( Collectors.toList() );
+        List<Bbs> result = sources.stream()
+                                  .map( bbs -> bbs.setFieldIfTrue( Utils::isWithinOneWeek,
+                                                                   b -> b.setWriteDate( new Date() ) ) )
+                                  .collect( Collectors.toList() );
         System.out.println( "\n=========================================" );
-        //        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+    }
+
+    @Test
+    public void testFP0007_setNew_setFieldIfTrue_byAccepting()
+        throws Exception {
+        final List<Bbs> sources = sources();
+        System.out.println( "\n=========================================" );
+        System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        List<Bbs> result = sources.stream()
+                                  .map( bbs -> bbs.setFieldIfTrue( Utils::isWithinOneWeek,
+                                                                   accepting( Bbs::setNew, true ) ) )
+                                  .collect( Collectors.toList() );
+        System.out.println( "\n=========================================" );
+        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+    }
+
+    /**
+     * peek 는 반환값을 가지지 않는 경우 사용
+     * @throws Exception
+     */
+    @Test
+    public void testFP0008_setNew_doIfTrue_byRunner()
+        throws Exception {
+        final List<Bbs> sources = sources();
+        System.out.println( "\n=========================================" );
+        System.out.println( sources.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
+        List<Bbs> result = sources.stream().peek( bbs -> doIfTrue( isWithinOneWeek( bbs ), () -> bbs.setNew( true ) ) )
+                                  .collect( Collectors.toList() );
+        System.out.println( "\n=========================================" );
+        System.out.println( result.stream().map( String::valueOf ).collect( Collectors.joining( "\n" ) ) );
     }
 }
